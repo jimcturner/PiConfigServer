@@ -51,7 +51,7 @@ int httpListeningPort = 0; //This is the 'actual' port no that was successfully 
 char ap_ssid[FIELD] = {0}; //Stores the name of the SSID
 char wpa_supplicantConfigPath[FIELD] = {0}; //Holds the path/name of the target wpa_supplicant file (supplied at runtime)
 char hostapdPath[FIELD] = {0}; //Holds the path/filename of the external hostapd (wpa access point) executable
-int unsavedChangesFlag=0;       //Signifies whether there are any unsaved/non backed up config changes made via the website
+int unsavedChangesFlag = 0; //Signifies whether there are any unsaved/non backed up config changes made via the website
 
 enum DHCPClient { //Used to signal which dhcp client to use
     nodhcpclient, dhclient, udhcpc
@@ -248,7 +248,7 @@ int updateStatus(char htmlStatus[], unsigned int outputBufferLength) {
     if(getUnsavedChangesFlag()==1){
         stringBuilder(htmlStatus, outputBufferLength, "<font>color=\"red\"**Warning: Unsaved changes. Backup config to make permanent **</font><br>");
     }
-    */
+     */
     //And finally...
     stringBuilder(htmlStatus, outputBufferLength, "</fieldset></form>");
     return 0;
@@ -703,13 +703,13 @@ int setHostAPWlanMode(int mode) {
     //char hostapdPath[] = "/usr/sbin/hostapd";
     //char *fileNameToWrite = "/etc/httpConfigServer_hostapd.conf";
     char *fileNameToWrite = "/tmp/httpConfigServer_hostapd.conf";
-    
+
     //construct SSID based on host and serial no. of Pi and a random element
     char buffer[FIELD] = {0}; //Temp buffer to hold hostname
     getHostName(buffer, FIELD); //Get hostname
     int serialNo = getSerialNumber(); //Get serial number
     snprintf(essid, FIELD, "%s%X", buffer, serialNo); //Construct SSID from random no+hostname+serialNo
-    printf("APHostWlanMode():essid: %s, wpaKey: %s\n", essid,wpaKey);
+    printf("APHostWlanMode():essid: %s, wpaKey: %s\n", essid, wpaKey);
 
     char commandResponse[FIELD] = {0};
     char commandString[FIELD] = {0};
@@ -770,10 +770,10 @@ int setHostAPWlanMode(int mode) {
         fp = fopen(fileNameToWrite, "w+"); //Open file for reading and writing. Truncate to zero first
         if (fp == NULL) {
             perror("setHostAPWlanMode().fopen(): (file can't be re-written). Error creating file");
-            printf("setHostAPWlanMode().fopen(): Couldn't write %s\n",fileNameToWrite);
+            printf("setHostAPWlanMode().fopen(): Couldn't write %s\n", fileNameToWrite);
             return -1;
         }
-        printf("Writing %s\n",fileNameToWrite);
+        printf("Writing %s\n", fileNameToWrite);
         fprintf(fp, hostapdConfigFile); //Write string to disk
         fclose(fp); //Close file
 
@@ -899,19 +899,19 @@ int getSetupMode() {
     return setupMode;
 }
 
-int getUnsavedChangesFlag(){
+int getUnsavedChangesFlag() {
     /*
      *      Returns the status of the global var unsavedChangesFlag.
      */
     return unsavedChangesFlag;
 }
 
-void setUnsavedChangesFlag(int var){
+void setUnsavedChangesFlag(int var) {
     /**
      * Sets the global var unsavedChanges.
      * @param var
      */
-    if (var>0) unsavedChangesFlag=1;
+    if (var > 0) unsavedChangesFlag = 1;
 }
 
 int getHTTPListeningPort() {
@@ -1198,6 +1198,68 @@ int setSetupMode(int mode) {
         printf("setSetupMode(). Mode %d already set, ignoring request\n", ret);
         return 1;
     }
+}
+
+void setReadWriteFileSystemMode(int mode) {
+    /**
+     * Very crude function that remounts the file system as read-write, or read only, by
+     * running a system command:-
+     * 
+     * It's very crude, because it doesn't currently check to see whether this is an appropriate course of action
+     * (i.e whether the os currently supports this method of switching mode -see below)
+     * 
+     * system("mount -o remount,ro /"); for readonly
+     * 
+     * or
+     * 
+     * system ("mount -o remount,rw /"); for readwrite
+     * 
+     * These commands are only intended to be run if the os has been modded according to this tutorial:-
+     * http://petr.io/en/blog/2015/11/09/read-only-raspberry-pi-with-jessie/ which modifies Raspian to be readonly
+     * (to protect the SD card from corruption) but permits writes, by remounting, where necessary.
+     * 
+     * Write access is necessary by this program for certain actions like editing the 
+     * /etc/wpa/wpa_supplicant.conf file if you add or remove an ssid/key pair for WiFi
+     * 
+     * if mode>1, will invoke read-write mode, if mode==0, will invoke readonly mode
+     * 
+     * system
+     * @param mode
+     */
+    if (mode > 0)
+        system("mount -o remount,rw /"); //Set read-write mode
+    else
+        system("mount -o remount,ro /"); //Set readonly mode
+}
+
+int isFileSystemWriteable() {
+    /**
+     * Simple function that attempts to write a file to the file system (to the home directory)
+     * If this is possible, it is safe to assume that os is writeable.
+     * 
+     * Returns '1' if OS writeable, returns 0 otherwise.
+     * @return 
+     */
+    //Create a file with a random name
+    FILE *fp; //Create pointer to a file
+    char fileNameToWrite[100] = {0}; //Array to hold path
+
+    srand(time(NULL)); //Initialise random number generator
+    int r = rand() % 1000; //Get random number between 0 and 1000
+    snprintf(fileNameToWrite, 100, "~/testfile%s", r); //Construct filename from random no
+    
+    //See if file can be created and opened
+    printf("isFileSystemWriteable(): Attempting to open test file: %s\n",fileNameToWrite);
+    fp = fopen(fileNameToWrite, "w+"); //Open file for reading and writing. Truncate to zero first
+    if (fp == NULL) {
+            //File can't be opened
+            perror("isFileSystemWriteable(): file can't be open/written). Error creating file");
+            return 0;   
+            ///GOT HERE
+        }
+    //close file
+    /////GOT HERE
+    //remove the file
 }
 
 int isWlan1Present() {
@@ -1510,7 +1572,7 @@ void *simpleHTTPServerThread(void *arg) {
             printf("\x1B[31mbutton=Backup\x1B[0m\n");
             char output[FIELD] = {0};
             printf("Initiating backup\n");
-            sysCmd2("filetool.sh -b", output, FIELD);       //This is for TinyCore. Won't work on Raspian
+            sysCmd2("filetool.sh -b", output, FIELD); //This is for TinyCore. Won't work on Raspian
             forceRedirect = 1; //Force redirection to clear POST data on next web refresh
         }
         startPos = strstr(buffer, "button=Reboot");
@@ -1533,16 +1595,16 @@ void *simpleHTTPServerThread(void *arg) {
                     reformatHTMLString(ssid, strlen((ssid))); //Remoce http encoding
                     reformatHTMLString(passPhrase, strlen((passPhrase))); //Remoce http encoding
                     printf("After: SSID: %s, Passphrase: %s\n", ssid, passPhrase);
-                    
+
                     //Now modify WPA config file
                     //First enable read-write mode on the filesystem
-                    system("sudo rw");   
+                    system("sudo rw");
                     int ret = createWPASupplicantConfig(ssid, passPhrase, wpa_supplicantConfigPath);
                     if (ret == -1)
                         printf("Couldn't modify file: %s\n", wpa_supplicantConfigPath);
-                    
+
                     //Put filesystem back into readonly mode
-                    system("sudo ro"); 
+                    system("sudo ro");
                     forceRedirect = 1; //Force redirection to clear POST data on next web refresh
                 }
             }
@@ -1910,7 +1972,7 @@ int startHttpConfigServer(unsigned int _port, char _wpa_supplicantConfigPath[], 
         }
         pthread_detach(_statusLEDThread); //Don't care what happens to thread afterwards
     }
-    
+
     //*wiFiConnectedThread
     pthread_t _wiFiConnectedThread;
     if (pthread_create(&_wiFiConnectedThread, NULL, wiFiConnectedThread, NULL)) {
