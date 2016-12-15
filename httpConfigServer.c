@@ -1237,29 +1237,40 @@ int isFileSystemWriteable() {
      * Simple function that attempts to write a file to the file system (to the home directory)
      * If this is possible, it is safe to assume that os is writeable.
      * 
-     * Returns '1' if OS writeable, returns 0 otherwise.
+     * Returns '1' if OS writeable, returns 0 if proven read-only or -1 on error
      * @return 
      */
     //Create a file with a random name
+    
     FILE *fp; //Create pointer to a file
     char fileNameToWrite[100] = {0}; //Array to hold path
 
     srand(time(NULL)); //Initialise random number generator
     int r = rand() % 1000; //Get random number between 0 and 1000
-    snprintf(fileNameToWrite, 100, "~/testfile%s", r); //Construct filename from random no
+    
+    snprintf(fileNameToWrite, 100, "~/testfile%d", r); //Construct filename from random no
     
     //See if file can be created and opened
     printf("isFileSystemWriteable(): Attempting to open test file: %s\n",fileNameToWrite);
     fp = fopen(fileNameToWrite, "w+"); //Open file for reading and writing. Truncate to zero first
     if (fp == NULL) {
-            //File can't be opened
+            //File can't be opened for writing, therefore assume readonly fs
             perror("isFileSystemWriteable(): file can't be open/written). Error creating file");
             return 0;   
             ///GOT HERE
         }
-    //close file
-    /////GOT HERE
-    //remove the file
+    else{
+        //File successfully written.
+        //First, close the file
+        fclose(fp);
+        printf("isFileSystemWriteable(): testfile %s created successfully. Now attempting to delete.\n",fileNameToWrite);
+        if(remove(fileNameToWrite)!=0){    //Attempt to remove file
+            printf("isFileSystemWriteable(): Unable to delete %s.\n",fileNameToWrite);
+            return -1;
+        }
+        return 1;
+    }
+    
 }
 
 int isWlan1Present() {
