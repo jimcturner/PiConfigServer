@@ -175,6 +175,8 @@
  *      Added: isFileSystemWriteable()
  *              This checks to see whether the file system is currently writable
  * 
+ *      Reduced DHCP lease time to 600 secs (10 mins), renewal time (500 secs) and rebinding time (550 secs)
+ * 
  */
 
 /* 
