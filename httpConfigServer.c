@@ -1525,15 +1525,24 @@ void *simpleHTTPServerThread(void *arg) {
             perror("ERROR on accept");
         }
         /* If connection is established then start communicating */
-        memset(buffer, 0, FIELD);
-        int n = read(newsockfd, buffer, FIELD);
 
-        if (n < 0) {
-            perror("ERROR reading from socket");
-        }
-        printf(KMAG"Incoming message: %s\n"KNRM, buffer);
-        int receivedMessageLength = strlen(buffer);
-        printf(KCYN"Received message Length: %d\n"KNRM, receivedMessageLength);
+        int receivedMessageLength = 0;
+        char tempRxBuffer[FIELD] = {0};
+        int readCount=0;
+        memset(buffer,0,FIELD);
+        do {
+            memset(tempRxBuffer, 0, FIELD);
+            readCount = read(newsockfd, tempRxBuffer, FIELD);
+            if (readCount < 0) {
+                perror("ERROR reading from socket");
+            }
+            printf(KMAG"Incoming message: %s\n"KNRM, tempRxBuffer);
+            receivedMessageLength = strlen(tempRxBuffer);
+            printf(KCYN"readCount: %d, Received message Length: %d\n"KNRM, receivedMessageLength);
+            
+            stringBuilder(buffer,FIELD,tempRxBuffer);
+            printf(KBLU"Concatenated buffer: %s\n"KNRM,buffer);
+        } while (readCount > 0);
         /*
         int l;
         for (l = 0; l < (bufferLength + 3); l++) printf("%c,%d:", buffer[l], (int) buffer[l]);
@@ -1869,7 +1878,7 @@ void *simpleHTTPServerThread(void *arg) {
                     "Location: %s\n", refererURL);
 
             printf("Referer html output: %s\n", buffer);
-            n = write(newsockfd, buffer, strlen(buffer));
+            int n = write(newsockfd, buffer, strlen(buffer));
             printf("%d chars written\n", n);
             if (n < 0) {
                 perror("ERROR writing to socket");
@@ -1878,7 +1887,7 @@ void *simpleHTTPServerThread(void *arg) {
 
         } else { //Or else output web page html as normal
             int charsWritten = 0;
-            n = write(newsockfd, htmlHeader, strlen(htmlHeader));
+            int n = write(newsockfd, htmlHeader, strlen(htmlHeader));
             charsWritten += n;
             if (n < 0) {
                 perror("ERROR writing to socket:01");
