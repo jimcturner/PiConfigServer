@@ -220,12 +220,13 @@ void main(int argc, char** argv) {
         sleep(1);
     }
      */
-    printf("piconfigserver 1.0 (c) James Turner 2016 15/12/16\n");
-    if(isFileSystemWriteable()==1)
-        printf("Main: Yes, writeable\n");
-    else printf("Main: No, readonly\n");
+    printf("piconfigserver 1.0 (c) James Turner 2016 18/12/16-01\n");
+    /*
+    int ret=isFileSystemWriteable();
+    printf("ret: %d\n",ret);
     exit(1);
-
+    */
+    
     sigset_t sigsToBlock;
     sigemptyset(&sigsToBlock); //initialise and empty the signal set
     sigaddset(&sigsToBlock, SIGTERM); //Add SIGTERM to our signal set

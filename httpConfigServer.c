@@ -1208,6 +1208,8 @@ void setReadWriteFileSystemMode(int mode) {
      * It's very crude, because it doesn't currently check to see whether this is an appropriate course of action
      * (i.e whether the os currently supports this method of switching mode -see below)
      * 
+     * You should really run isFileSystemWriteable() first, so you know...
+     * 
      * system("mount -o remount,ro /"); for readonly
      * 
      * or
@@ -1235,42 +1237,58 @@ void setReadWriteFileSystemMode(int mode) {
 int isFileSystemWriteable() {
     /**
      * Simple function that attempts to write a file to the file system (to the home directory)
-     * If this is possible, it is safe to assume that os is writeable.
+     * and /etc. If this is possible, it is safe to assume that os is writeable.
      * 
-     * Returns '1' if OS writeable, returns 0 if proven read-only or -1 on error
+     * Returns '2' if OS fully writeable (i.e the program has sudo rights) , 
+     * returns 1 if can write to home folder, 0 if read-only, or -1 if an error
+     * 
      * @return 
      */
     //Create a file with a random name
-    
+
     FILE *fp; //Create pointer to a file
     char fileNameToWrite[100] = {0}; //Array to hold path
 
     srand(time(NULL)); //Initialise random number generator
     int r = rand() % 1000; //Get random number between 0 and 1000
-    
-    snprintf(fileNameToWrite, 100, "~/testfile%d", r); //Construct filename from random no
-    
-    //See if file can be created and opened
-    printf("isFileSystemWriteable(): Attempting to open test file: %s\n",fileNameToWrite);
+
+    //See if file can be created and opened in/etc
+    snprintf(fileNameToWrite, 100, "/etc/testfile%d", r); //Construct filename from random no
+    printf("isFileSystemWriteable(): Attempting to open test file: %s\n", fileNameToWrite);
     fp = fopen(fileNameToWrite, "w+"); //Open file for reading and writing. Truncate to zero first
     if (fp == NULL) {
-            //File can't be opened for writing, therefore assume readonly fs
-            perror("isFileSystemWriteable(): file can't be open/written). Error creating file");
-            return 0;   
-            ///GOT HERE
+        //File can't be opened for writing in /etc. Could be a permissions issue
+        perror("isFileSystemWriteable(): file can't be open/written in /etc). Error creating file");
+
+        //Writing to /etc not possible, now try writing to the home directory. Could be a sudo issue
+        snprintf(fileNameToWrite, 100, "testfile%d", r); //Construct filename from random no (no /etc/ path this time))
+        printf("isFileSystemWriteable(): Second attempt to to open test file: %s\n", fileNameToWrite);
+        fp = fopen(fileNameToWrite, "w+"); //Open file for reading and writing. Truncate to zero first
+        if (fp == NULL) {
+            //Still can't create/open a file, not even in home dir. Assume a readonly file system
+            return 0;
         }
-    else{
-        //File successfully written.
+        //File successfuly created in home directory
         //First, close the file
         fclose(fp);
-        printf("isFileSystemWriteable(): testfile %s created successfully. Now attempting to delete.\n",fileNameToWrite);
-        if(remove(fileNameToWrite)!=0){    //Attempt to remove file
-            printf("isFileSystemWriteable(): Unable to delete %s.\n",fileNameToWrite);
-            return -1;
+        printf("isFileSystemWriteable(): testfile %s created successfully. Now attempting to delete.\n", fileNameToWrite);
+        if (remove(fileNameToWrite) != 0) { //Attempt to remove file
+            printf("isFileSystemWriteable(): Unable to delete %s.\n", fileNameToWrite);
+            return -1; //Can't delete the file we created, return an error condition
         }
-        return 1;
+        return 1; //Weren't able to write to /etc but were able to write to home dir, so fs is writable
+    } else {
+        //File successfully created in /etc.
+        //First, close the file
+        fclose(fp);
+        printf("isFileSystemWriteable(): testfile %s created successfully. Now attempting to delete.\n", fileNameToWrite);
+        if (remove(fileNameToWrite) != 0) { //Attempt to remove file
+            printf("isFileSystemWriteable(): Unable to delete %s.\n", fileNameToWrite);
+            return -1; //Can't delete the file we created, return an error condition
+        }
+        return 2;
     }
-    
+
 }
 
 int isWlan1Present() {
@@ -1608,14 +1626,36 @@ void *simpleHTTPServerThread(void *arg) {
                     printf("After: SSID: %s, Passphrase: %s\n", ssid, passPhrase);
 
                     //Now modify WPA config file
-                    //First enable read-write mode on the filesystem
-                    system("sudo rw");
-                    int ret = createWPASupplicantConfig(ssid, passPhrase, wpa_supplicantConfigPath);
-                    if (ret == -1)
-                        printf("Couldn't modify file: %s\n", wpa_supplicantConfigPath);
+                    //First, check whether the file system is writeable (or readonly)
+                    int fileSystemReadWriteStatus = isFileSystemWriteable();
+                    switch (fileSystemReadWriteStatus) {
+                            //If isFileSystemWriteable() returns a 2, it's easy, we have access to write /etc)
+                        case 2://Easy, file system is writable (and prog has rights to modify /etc folder)
+                            if (createWPASupplicantConfig(ssid, passPhrase, wpa_supplicantConfigPath) == -1) //Write new config file
+                                printf(KRED"Couldn't modify file: %s\n"KNRM, wpa_supplicantConfigPath);
+                            break;
 
-                    //Put filesystem back into readonly mode
-                    system("sudo ro");
+                        case 1: //File system is writeable but we don't have rights to modify /etc
+                            printf(KRED"Insufficient rights to modify %s. Running as sudo?\n"KNRM, wpa_supplicantConfigPath);
+                            break;
+
+                        case 0: //File system is readonly. Try to see if we can force it into read-write mode
+                            printf("File system is readonly. Attempting to put fs into read-write mode with: mount -o remount,rw /\n");
+                            system("mount -o remount,rw /");
+                            //Now check once again to see if we can write to /etc
+                            if (isFileSystemWriteable() == 2) {
+                                //Yes, we can, now modify wpa_supplicant conf file
+                                if (createWPASupplicantConfig(ssid, passPhrase, wpa_supplicantConfigPath) == -1)
+                                    printf("Couldn't modify file: %s\n", wpa_supplicantConfigPath);
+                            } else {
+                                printf(KRED"Still can't write to %s.\n"KNRM, wpa_supplicantConfigPath);
+                            }
+                            printf("Reverting fs to read-only mode with: mount -o remount,ro /\n");
+                            system("mount -o remount,ro /");
+                            break;
+
+                        default: break;
+                    }
                     forceRedirect = 1; //Force redirection to clear POST data on next web refresh
                 }
             }
@@ -1632,13 +1672,38 @@ void *simpleHTTPServerThread(void *arg) {
                 reformatHTMLString(ssid, strlen((ssid))); //Remoce http encoding
                 printf("removeSSID= SSID: %s\n", ssid);
                 //Now remove SSID (and associated network block) from WPA config file
-                //First put Raspian filesystem into RW mode
-                system("rw");
-                int ret = deleteESSIDfromConfigFileByName(wpa_supplicantConfigPath, ssid);
-                if (ret == -1)
-                    printf("Couldn't modify file: %s\n", wpa_supplicantConfigPath);
-                //Revert Raspian filesystem to read-only mode
-                system("ro");
+
+                //////
+                int fileSystemReadWriteStatus = isFileSystemWriteable();
+                switch (fileSystemReadWriteStatus) {
+                        //If isFileSystemWriteable() returns a 2, it's easy, we have access to write /etc)
+                    case 2://Easy, file system is writable (and prog has rights to modify /etc folder)
+                        if (deleteESSIDfromConfigFileByName(wpa_supplicantConfigPath, ssid) == -1)
+                            printf(KGRN"Couldn't modify file: %s\n"KNRM, wpa_supplicantConfigPath);
+                        break;
+
+                    case 1: //File system is writeable but we don't have rights to modify /etc
+                        printf(KRED"Insufficient rights to modify %s. Running as sudo?\n"KNRM, wpa_supplicantConfigPath);
+                        break;
+
+                    case 0: //File system is readonly. Try to see if we can force it into read-write mode
+                        printf("File system is readonly. Attempting to put fs into read-write mode with: mount -o remount,rw /\n");
+                        system("mount -o remount,rw /");
+                        //Now check once again to see if we can write to /etc
+                        if (isFileSystemWriteable() == 2) {
+                            //Yes, we can, now modify wpa_supplicant conf file
+                            if (deleteESSIDfromConfigFileByName(wpa_supplicantConfigPath, ssid) == -1)
+                                printf(KGRN"Couldn't modify file: %s\n"KNRM, wpa_supplicantConfigPath);
+                        } else {
+                            printf(KRED"Still can't write to %s.\n"KNRM, wpa_supplicantConfigPath);
+                        }
+                        printf("Reverting fs to read-only mode with: mount -o remount,ro /\n");
+                        system("mount -o remount,ro /");
+                        break;
+
+                    default: break;
+                }
+                //////
                 forceRedirect = 1; //Force redirection to clear POST data on next web refresh
 
             }
