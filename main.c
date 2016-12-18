@@ -168,9 +168,12 @@
  *      Added system("rw") and system ("ro") commands to httpServerThread(), to AddSSID and RemoveSSID buttons
  *      to allow filesystem to be temporarily put into read-write mode such that /etc/wpa_supplicant.conf
  *      can be modified
- *      NOTE: This relies on there being a system command/alias installed to permit this change of fs mode
  *      
- *      Added: 
+ *      Note: This functionality is really dependant on having a read-only FS set up using this tutorial:-
+ *      http://petr.io/en/blog/2015/11/09/read-only-raspberry-pi-with-jessie/
+ *      
+ *      Added: isFileSystemWriteable()
+ *              This checks to see whether the file system is currently writable
  * 
  */
 

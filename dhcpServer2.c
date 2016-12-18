@@ -427,31 +427,37 @@ void *DHCPServerThread(void *arg) {
                     *option_ptr++ = 1;
                     *option_ptr++ = 5;
 
-                    // renewal time
+                    // renewal time     
                     *option_ptr++ = 58;
                     *option_ptr++ = 4;
                     *option_ptr++ = 0;
                     *option_ptr++ = 0;
+                    /*
                     *option_ptr++ = 0x38;
                     *option_ptr++ = 0x40;
+                    */
+                    *option_ptr++ = 0x01;       //500 seconds high byte
+                    *option_ptr++ = 0xF4;       //500 seconds low byte
 
                     // rebinding time
                     *option_ptr++ = 59;
                     *option_ptr++ = 4;
                     *option_ptr++ = 0;
                     *option_ptr++ = 0;
+                    /*
                     *option_ptr++ = 0x62;
                     *option_ptr++ = 0x70;
+                    */
+                    *option_ptr++ = 0x02;       //550 seconds high byte
+                    *option_ptr++ = 0x26;       //550 seconds low byte
 
-                    // lease time (0x00010203 = 18 hours (66ksec)
+                    // lease time (in seconds) (10 minutes=600 secs. =0x0258)
                     *option_ptr++ = 51;
                     *option_ptr++ = 4;
                     *option_ptr++ = 0;
                     *option_ptr++ = 0;
-                    *option_ptr++ = 0x70;
-                    *option_ptr++ = 0x80;
-                    //*option_ptr++ = 0x00;
-                    //*option_ptr++ = 0x10;
+                    *option_ptr++ = 0x02;       //600 seconds high byte
+                    *option_ptr++ = 0x58;       //600 seconds low byte
 
                     // dhcp server identifier
                     *option_ptr++ = 54;
