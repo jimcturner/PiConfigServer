@@ -162,21 +162,25 @@
  *      Changed location of conf file to "/tmp/httpConfigServer_hostapd.conf" to suit
  *      read-only Raspian mode (this is the only writeable folder with the readonly filesystem)
  * 
- *      Added int unsavedChangesFlag: global var to signal whether changes to wpa_supplicant.conf 
- *      need to be made permanent (by backing up). Ready, but not implemented, because not needed yet
+ * Added int unsavedChangesFlag: global var to signal whether changes to wpa_supplicant.conf 
+ * need to be made permanent (by backing up). Ready, but not implemented, because not needed yet
  * 
- *      Added system("rw") and system ("ro") commands to httpServerThread(), to AddSSID and RemoveSSID buttons
- *      to allow filesystem to be temporarily put into read-write mode such that /etc/wpa_supplicant.conf
- *      can be modified
+ * Added system("rw") and system ("ro") commands to httpServerThread(), to AddSSID and RemoveSSID buttons
+ * to allow filesystem to be temporarily put into read-write mode such that /etc/wpa_supplicant.conf
+ * can be modified
  *      
- *      Note: This functionality is really dependant on having a read-only FS set up using this tutorial:-
- *      http://petr.io/en/blog/2015/11/09/read-only-raspberry-pi-with-jessie/
+ * Note: This functionality is really dependant on having a read-only FS set up using this tutorial:-
+ * http://petr.io/en/blog/2015/11/09/read-only-raspberry-pi-with-jessie/
  *      
- *      Added: isFileSystemWriteable()
- *              This checks to see whether the file system is currently writable
+ * Added: isFileSystemWriteable()
+ *        This checks to see whether the file system is currently writable
  * 
- *      Reduced DHCP lease time to 600 secs (10 mins), renewal time (500 secs) and rebinding time (550 secs)
+ * Reduced DHCP lease time to 600 secs (10 mins), renewal time (500 secs) and rebinding time (550 secs)
  * 
+ *  Serious bug in http listener routine...
+ *          It can only parse on tcp packet at a time. ios (iphone) browser typically breaks up an HTTP POST
+ *          into multiple packets, therefor my program can't make anything of it. Doesn't seem to be a problem
+ *          with desktop Chrome
  */
 
 /* 

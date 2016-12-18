@@ -1,6 +1,16 @@
 /*
  * Minimal http server to allow configuration of WiFi and other network parameters.
  * 
+ * It has a serious issue when it receives POST data.
+ * Typically the ios (Apple iPhone) browser splits the header (containing the POST...) and the actual data
+ * e.g 'button=WiFi+Scan' bit into several TCP packets. Because my listener is only parsing a single packet 
+ * at a time, this means that it breaks because it closes the TCP connection before the ios device has 
+ * finished sending all it's data
+ * 
+ * This doesn't seem to be an issue on the desktop version of Chrome, which sends the entirety of the data in a single packet
+ * 
+ * 
+ * 
  * GPIO controlled.
  */
 
@@ -1515,7 +1525,7 @@ void *simpleHTTPServerThread(void *arg) {
         if (n < 0) {
             perror("ERROR reading from socket");
         }
-        //printf("Incoming message: %s\n", buffer);
+        printf(KMAG"Incoming message: %s\n"KNRM, buffer);
         //int bufferLength = strlen(buffer);
         //printf("bufferLength: %d\n", bufferLength);
         /*
@@ -1917,11 +1927,12 @@ void *simpleHTTPServerThread(void *arg) {
         memset(buffer, 0, FIELD);
         updateTime(buffer, FIELD);
         printf("%s%s%s\n", KMAG, buffer, KNRM); //Print current time
+        
         printf("Closing newsockfd: %d\n", newsockfd);
         if (close(newsockfd) == -1) {
             printf("Couldn't close newsockfd: %d\n", newsockfd);
         }
-
+        
         //Now act on 'schedule flags' set by earlier web button presses
         if (scheduleEnterSetupMode > 0) {
             int temp = scheduleEnterSetupMode; //Take a local copy
