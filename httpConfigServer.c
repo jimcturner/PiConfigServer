@@ -51,7 +51,7 @@ int httpListeningPort = 0; //This is the 'actual' port no that was successfully 
 char ap_ssid[FIELD] = {0}; //Stores the name of the SSID
 char wpa_supplicantConfigPath[FIELD] = {0}; //Holds the path/name of the target wpa_supplicant file (supplied at runtime)
 char hostapdPath[FIELD] = {0}; //Holds the path/filename of the external hostapd (wpa access point) executable
-int unsavedChangesFlag = 0; //Signifies whether there are any unsaved/non backed up config changes made via the website
+volatile int unsavedChangesFlag = 0; //Signifies whether there are any unsaved/non backed up config changes made via the website
 
 enum DHCPClient { //Used to signal which dhcp client to use
     nodhcpclient, dhclient, udhcpc
@@ -244,11 +244,11 @@ int updateStatus(char htmlStatus[], unsigned int outputBufferLength) {
         }
 
     }
-    /*
+    
     if(getUnsavedChangesFlag()==1){
-        stringBuilder(htmlStatus, outputBufferLength, "<font>color=\"red\"**Warning: Unsaved changes. Backup config to make permanent **</font><br>");
+        stringBuilder(htmlStatus, outputBufferLength, "<font color=\"red\">**Warning: Unsaved changes. Backup config to make permanent **</font><br>");
     }
-     */
+     
     //And finally...
     stringBuilder(htmlStatus, outputBufferLength, "</fieldset></form>");
     return 0;
@@ -912,6 +912,7 @@ void setUnsavedChangesFlag(int var) {
      * @param var
      */
     if (var > 0) unsavedChangesFlag = 1;
+    else unsavedChangesFlag=0;
 }
 
 int getHTTPListeningPort() {
@@ -1523,6 +1524,20 @@ void *simpleHTTPServerThread(void *arg) {
         printf("\n");
          */
 
+        
+        //Unssaved changes TEST
+       /*
+        int status=getUnsavedChangesFlag();
+        printf(KGRN"(before) UnsavedChangesFlag: %d\n"KNRM,status);
+        if(getUnsavedChangesFlag()==0)
+            setUnsavedChangesFlag(1);
+        else setUnsavedChangesFlag(0);
+        status=getUnsavedChangesFlag();
+        printf(KGRN"(after) UnsavedChangesFlag: %d\n"KNRM,status);
+        
+        */
+        //END OF TEST
+        
         //Now test incoming message 
         char *startPos, *endPos;
         unsigned int length = 0; //Length of substring to be extracted
