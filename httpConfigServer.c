@@ -9,9 +9,15 @@
  * 
  * This doesn't seem to be an issue on the desktop version of Chrome, which sends the entirety of the data in a single packet
  * 
+ * Possible solution: - 
+ *  1)Keep concatenating received buffer strings (reuse stringBuilder() until you receive one with zero length
+ *      Only then, close the connection (not before) and parse the message
+ * 
+ *  2)Actually calculate how long the data is that we're sending to the receving end (using the Content-Length
+ * parameter in the HTTP header
+ *  
  * 
  * 
- * GPIO controlled.
  */
 
 #include <stdio.h>
@@ -254,11 +260,11 @@ int updateStatus(char htmlStatus[], unsigned int outputBufferLength) {
         }
 
     }
-    
-    if(getUnsavedChangesFlag()==1){
+
+    if (getUnsavedChangesFlag() == 1) {
         stringBuilder(htmlStatus, outputBufferLength, "<font color=\"red\">**Warning: Unsaved changes. Backup config to make permanent **</font><br>");
     }
-     
+
     //And finally...
     stringBuilder(htmlStatus, outputBufferLength, "</fieldset></form>");
     return 0;
@@ -922,7 +928,7 @@ void setUnsavedChangesFlag(int var) {
      * @param var
      */
     if (var > 0) unsavedChangesFlag = 1;
-    else unsavedChangesFlag=0;
+    else unsavedChangesFlag = 0;
 }
 
 int getHTTPListeningPort() {
@@ -1526,28 +1532,28 @@ void *simpleHTTPServerThread(void *arg) {
             perror("ERROR reading from socket");
         }
         printf(KMAG"Incoming message: %s\n"KNRM, buffer);
-        //int bufferLength = strlen(buffer);
-        //printf("bufferLength: %d\n", bufferLength);
+        int receivedMessageLength = strlen(buffer);
+        printf(KCYN"Received message Length: %d\n"KNRM, receivedMessageLength);
         /*
         int l;
         for (l = 0; l < (bufferLength + 3); l++) printf("%c,%d:", buffer[l], (int) buffer[l]);
         printf("\n");
          */
 
-        
+
         //Unssaved changes TEST
-       /*
-        int status=getUnsavedChangesFlag();
-        printf(KGRN"(before) UnsavedChangesFlag: %d\n"KNRM,status);
-        if(getUnsavedChangesFlag()==0)
-            setUnsavedChangesFlag(1);
-        else setUnsavedChangesFlag(0);
-        status=getUnsavedChangesFlag();
-        printf(KGRN"(after) UnsavedChangesFlag: %d\n"KNRM,status);
+        /*
+         int status=getUnsavedChangesFlag();
+         printf(KGRN"(before) UnsavedChangesFlag: %d\n"KNRM,status);
+         if(getUnsavedChangesFlag()==0)
+             setUnsavedChangesFlag(1);
+         else setUnsavedChangesFlag(0);
+         status=getUnsavedChangesFlag();
+         printf(KGRN"(after) UnsavedChangesFlag: %d\n"KNRM,status);
         
-        */
+         */
         //END OF TEST
-        
+
         //Now test incoming message 
         char *startPos, *endPos;
         unsigned int length = 0; //Length of substring to be extracted
@@ -1927,12 +1933,13 @@ void *simpleHTTPServerThread(void *arg) {
         memset(buffer, 0, FIELD);
         updateTime(buffer, FIELD);
         printf("%s%s%s\n", KMAG, buffer, KNRM); //Print current time
-        
+
+
         printf("Closing newsockfd: %d\n", newsockfd);
         if (close(newsockfd) == -1) {
             printf("Couldn't close newsockfd: %d\n", newsockfd);
         }
-        
+
         //Now act on 'schedule flags' set by earlier web button presses
         if (scheduleEnterSetupMode > 0) {
             int temp = scheduleEnterSetupMode; //Take a local copy
