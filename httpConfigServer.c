@@ -1528,29 +1528,91 @@ void *simpleHTTPServerThread(void *arg) {
 
         int receivedMessageLength = 0;
         char tempRxBuffer[FIELD] = {0};
-        int readCount=0;
-        memset(buffer,0,FIELD);
+        int moreDataExpectedFlag = 0;
+        memset(buffer, 0, FIELD);
         do {
             memset(tempRxBuffer, 0, FIELD);
-            readCount = read(newsockfd, tempRxBuffer, FIELD);
+            int readCount = read(newsockfd, tempRxBuffer, FIELD);
             if (readCount < 0) {
                 perror("ERROR reading from socket");
             }
             printf(KMAG"Incoming message: %s\n"KNRM, tempRxBuffer);
             receivedMessageLength = strlen(tempRxBuffer);
             printf(KCYN"readCount: %d, Received message Length: %d\n"KNRM, receivedMessageLength);
-            
-            stringBuilder(buffer,FIELD,tempRxBuffer);
-            printf(KBLU"Concatenated buffer: %s\n"KNRM,buffer);
-        } while (readCount > 0);
-        /*
-        int l;
-        for (l = 0; l < (bufferLength + 3); l++) printf("%c,%d:", buffer[l], (int) buffer[l]);
-        printf("\n");
-         */
 
+            int contentLength; //Holds the length of data we're expecting, according to the Content-Length header value
+            int contentRecovered; //Holds the length of data we have actually recovered
 
-        //Unssaved changes TEST
+            //Now test incoming message to see if it's a header, if so what kind of header
+            //or else some supplementary data that been fragmented by tcp/ip
+
+            if (strstr(tempRxBuffer, "GET /") != NULL) { //GET received
+                //HTTP GET header received
+                printf("GET / header received\n");
+                stringBuilder(buffer, FIELD, tempRxBuffer); //Copy received message into buffer for parsing
+                moreDataExpectedFlag = 0; //Break out of outer do..while loop by clearing flag
+
+            } else if (strstr(tempRxBuffer, "POST /") != NULL) { //POST received
+                printf("POST / header received\n");
+                moreDataExpectedFlag = 0; //Clear the flag until we know we need to raise it again
+
+                //Now parse 'Content-Length:' field of received header to determine payload size
+                char extractedData[FIELD] = {0};
+                if (extractString(tempRxBuffer, "Content-Length:", ":", "\n", extractedData, FIELD) > 0) {
+                    //convert extracted int to a string
+                    contentLength = strtol(extractedData, NULL, 10);
+
+                    printf("Extracted content length: %d\n", contentLength);
+
+                    //Now extract the data (follows on from the header and key/value pairs, delimited by a \r\n
+                    if (contentLength > 0) {
+                        memset(extractedData, 0, FIELD); //Clear temporary buffer
+                        contentRecovered = extractString(tempRxBuffer, "\r\n\r\n", "\n", "\0", extractedData, FIELD);
+                        //Now compensate for limitations of extractString
+                        contentRecovered = contentRecovered - 3; //Adjust for the 'false triggereing' on the first '\n'
+                        if (contentRecovered > 0) {
+                            //Now compensate for the fact that the first two chars of the receoverd array will be
+                            //'\r' and '\n'. Get rid of these by shifting the entire array left, by two
+                            int n;
+                            for (n = 0; n < contentRecovered; n++) {
+                                extractedData[n] = extractedData[n + 2]; //lose the first two chars of the array
+                            }
+                            extractedData[contentRecovered] = '\0'; //Null terminate the string for neatness
+
+                            printf(KGRN"contentRecovered %d:%s\n"KNRM, contentRecovered, extractedData);
+                        }
+                        stringBuilder(buffer, FIELD, tempRxBuffer); //Copy received message into buffer for parsing
+                        //Now check to see if we've recovered all the data we were expecting, according to
+                        //the Content-Length parameter specified in the POST header.
+                        //If we haven't, set a flag to expect more data
+                        if (contentRecovered < contentLength){
+                            printf(KRED"Received %d of %d. More data expected...\n"KNRM,contentRecovered,contentLength);
+                            moreDataExpectedFlag = 1;
+                        }
+                    }
+                }
+            } else {
+                printf(KRED"Neither GET or POST received. unidentified header\n"KNRM);
+                //GET or POST header not received, so this could be part of a fragmented POST packet
+                //Length of incoming tcp packet payload signalled by readCount
+
+                //First, add the new data to previously received data
+                stringBuilder(buffer, FIELD, tempRxBuffer);
+                contentRecovered = contentRecovered + readCount; //Add new data length to existing counter
+                printf(KRED"Received %d of %d\n", contentRecovered, contentLength);
+                if (contentRecovered >= contentLength) //Have we received all we were expecting?
+                    moreDataExpectedFlag = 0; //If so, clear the flag
+
+            }
+            printf(KBLU"Concatenated buffer: %s\n"KNRM, buffer);
+        } while (moreDataExpectedFlag > 0);
+        
+        //Now 'buffer' should contain a completely defragmented versiob of the original http POST stream 
+        //sent by the client.
+        
+        //Next step is to parse the incoming stream.
+
+        //Unsaved changes TEST
         /*
          int status=getUnsavedChangesFlag();
          printf(KGRN"(before) UnsavedChangesFlag: %d\n"KNRM,status);
