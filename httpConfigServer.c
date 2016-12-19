@@ -1531,14 +1531,18 @@ void *simpleHTTPServerThread(void *arg) {
         int moreDataExpectedFlag = 0;
         memset(buffer, 0, FIELD);
         do {
+            //Read each incoming tcp message into tempRxBuffer
+            //Determine whether it's a GET, POST or undetermined
+            //If it's a POST that's been fragmented into many packets (ios will do this)
+            //stitch all the data from all the packets back together again so they can be 
+            //parsed as one
+            
             memset(tempRxBuffer, 0, FIELD);
             int readCount = read(newsockfd, tempRxBuffer, FIELD);
             if (readCount < 0) {
                 perror("ERROR reading from socket");
             }
             printf(KMAG"Incoming message: %s\n"KNRM, tempRxBuffer);
-            receivedMessageLength = strlen(tempRxBuffer);
-            printf(KCYN"readCount: %d, Received message Length: %d\n"KNRM, receivedMessageLength);
 
             int contentLength; //Holds the length of data we're expecting, according to the Content-Length header value
             int contentRecovered; //Holds the length of data we have actually recovered
@@ -1579,7 +1583,7 @@ void *simpleHTTPServerThread(void *arg) {
                             }
                             extractedData[contentRecovered] = '\0'; //Null terminate the string for neatness
 
-                            printf(KGRN"contentRecovered %d:%s\n"KNRM, contentRecovered, extractedData);
+                            //printf(KGRN"contentRecovered %d:%s\n"KNRM, contentRecovered, extractedData);
                         }
                         stringBuilder(buffer, FIELD, tempRxBuffer); //Copy received message into buffer for parsing
                         //Now check to see if we've recovered all the data we were expecting, according to
@@ -1628,7 +1632,8 @@ void *simpleHTTPServerThread(void *arg) {
         //Now test incoming message 
         char *startPos, *endPos;
         unsigned int length = 0; //Length of substring to be extracted
-
+        
+        //////START PARSING HERE////////
         //Detect HTML button presses
         startPos = strstr(buffer, "button=Restart+WPA+Supplicant");
         if (startPos != NULL) {
