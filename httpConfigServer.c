@@ -1,22 +1,7 @@
 /*
  * Minimal http server to allow configuration of WiFi and other network parameters.
  * 
- * It has a serious issue when it receives POST data.
- * Typically the ios (Apple iPhone) browser splits the header (containing the POST...) and the actual data
- * e.g 'button=WiFi+Scan' bit into several TCP packets. Because my listener is only parsing a single packet 
- * at a time, this means that it breaks because it closes the TCP connection before the ios device has 
- * finished sending all it's data
- * 
- * This doesn't seem to be an issue on the desktop version of Chrome, which sends the entirety of the data in a single packet
- * 
- * Possible solution: - 
- *  1)Keep concatenating received buffer strings (reuse stringBuilder() until you receive one with zero length
- *      Only then, close the connection (not before) and parse the message
- * 
- *  2)Actually calculate how long the data is that we're sending to the receving end (using the Content-Length
- * parameter in the HTTP header
- *  
- * 
+ * Foxed TCP POST fragmention bug 19/12/16
  * 
  */
 

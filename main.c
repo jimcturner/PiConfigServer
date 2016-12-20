@@ -177,10 +177,7 @@
  * 
  * Reduced DHCP lease time to 600 secs (10 mins), renewal time (500 secs) and rebinding time (550 secs)
  * 
- *  Serious bug in http listener routine...
- *          It can only parse on tcp packet at a time. ios (iphone) browser typically breaks up an HTTP POST
- *          into multiple packets, therefor my program can't make anything of it. Doesn't seem to be a problem
- *          with desktop Chrome
+ *  Fixed TCP POST fragmentation bug
  */
 
 /* 
